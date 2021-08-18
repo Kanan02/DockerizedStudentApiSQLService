@@ -1,0 +1,23 @@
+version: '3.4'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    env_file: mc.env
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "PaSSw0rd2019"
+      MSSQL_PID: Express
+    ports:
+     - "1433:1433"
+
+  studentapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: mc.env
+    environment:
+      DBServer: "sqlserver"
+    ports:
+      - "8080:80"
+
