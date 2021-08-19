@@ -14,6 +14,10 @@ using MyMicroservice.Models;
 using Microsoft.EntityFrameworkCore;
 using MyMicroservice.Services;
 using EasyNetQ;
+using RabbitMQ.Client;
+using System.Text;
+using Newtonsoft.Json;
+
 namespace MyMicroservice
 {
     public class Startup
@@ -29,12 +33,12 @@ namespace MyMicroservice
         public void ConfigureServices(IServiceCollection services)
         {
 
-            var server = Configuration["DBServer"]??"localhost";
+            var server = Configuration["DBServer"];
             
-            var port = Configuration["DBPort"]??"1433";
-            var user = Configuration["DBUser"]?? "SA";
-            var password = Configuration["DBPassword"]?? "PaSSw0rd2019";
-            var database = Configuration["Database"]??"Students";
+            var port = Configuration["DBPort"];
+            var user = Configuration["DBUser"];
+            var password = Configuration["DBPassword"];
+            var database = Configuration["Database"];
 
             services.AddDbContext<StudentContext>(options =>
                 options.UseSqlServer($"Server={server},{port};Initial Catalog={database};User ID ={user};Password={password}",
@@ -57,11 +61,32 @@ namespace MyMicroservice
             //var bus = RabbitHutch.CreateBus(rabbitmqConnectionString);
             //services.AddSingleton(bus);
             //services.AddHostedService<BackgroundServices.UserEventHandler>();
+            var factory = new ConnectionFactory
+            {
+                Uri = new Uri("amqp://guest:guest@localhost:5672")
+
+            };
+            var rabbitMqConnection = factory.CreateConnection();
+            services.AddSingleton(rabbitMqConnection);
+            services.AddSingleton<IRabbitMQClient, RabbitMQClient>();
+
+            //using var channel = connection.CreateModel();
+            //channel.QueueDeclare(
+            //    "demo-queue",
+            //    durable: true,
+            //    exclusive: false,
+            //    autoDelete: false,
+            //    arguments: null);
+            //var message = new { Name = "Producer", Message = "Hello" };
+            //var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
+
+            //channel.BasicPublish("", "demo-queue", null, body);
 
         }
 
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime hostApplicationLifetime)
         {
             if (env.IsDevelopment())
             {
@@ -79,6 +104,15 @@ namespace MyMicroservice
                 endpoints.MapControllers();
             });
             PrepDB.PrepPopulation(app);
+
+
+
+            hostApplicationLifetime.ApplicationStarted.Register(() => { });
+            hostApplicationLifetime.ApplicationStopping.Register(() =>
+            {
+                var rabbitMqClient = app.ApplicationServices.GetRequiredService<IRabbitMQClient>();
+                rabbitMqClient.CloseConnection();
+            });
         }
     }
 }

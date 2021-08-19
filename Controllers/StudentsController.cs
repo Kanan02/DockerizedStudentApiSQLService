@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -15,9 +16,11 @@ namespace MyMicroservice.Controllers
     public class StudentsController : ControllerBase
     {
         private readonly StudentContext _context;
-        public StudentsController(StudentContext context)
+        private readonly IRabbitMQClient _rabbitMqClient;
+        public StudentsController(StudentContext context, IRabbitMQClient rabbitMQClient)
         {
             _context = context;
+            _rabbitMqClient = rabbitMQClient;
         }
         [HttpGet]
         public ActionResult<IEnumerable<Student>> GetStudents()
@@ -45,6 +48,8 @@ namespace MyMicroservice.Controllers
         {
             if (_context.Create(item))
             {
+                var payload = JsonSerializer.Serialize(item);
+                _rabbitMqClient.Publish("creating", "student.created", payload);
                 return CreatedAtRoute("GetById", new { id = item.Id }, item);
                 
             }

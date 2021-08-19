@@ -40,6 +40,7 @@ namespace MyMicroservice.Services
             }
             item.InsertedAt = DateTime.Now;
             item.UpdatedAt = DateTime.Now;
+
             Students.Add(item);
             SaveChanges();
 
