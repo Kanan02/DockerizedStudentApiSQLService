@@ -48,19 +48,13 @@ namespace MyMicroservice
                  })
 
             ) ;
-            //string connection = Configuration.GetConnectionString("DefaultConnection");
-            //services.AddDbContext<StudentContext>(options => options.UseSqlServer(connection));
-            //services.AddControllersWithViews();
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v2", new OpenApiInfo { Title = "StudentsMicroservice", Version = "v2" });
             });
-            //string rabbitmqConnectionString = "host.docker.internal;username=guest;password=guest;timeout=60";
-            //var bus = RabbitHutch.CreateBus(rabbitmqConnectionString);
-            //services.AddSingleton(bus);
-            //services.AddHostedService<BackgroundServices.UserEventHandler>();
+           
             var factory = new ConnectionFactory
             {
                 Uri = new Uri("amqp://guest:guest@localhost:5672")
@@ -70,17 +64,6 @@ namespace MyMicroservice
             services.AddSingleton(rabbitMqConnection);
             services.AddSingleton<IRabbitMQClient, RabbitMQClient>();
 
-            //using var channel = connection.CreateModel();
-            //channel.QueueDeclare(
-            //    "demo-queue",
-            //    durable: true,
-            //    exclusive: false,
-            //    autoDelete: false,
-            //    arguments: null);
-            //var message = new { Name = "Producer", Message = "Hello" };
-            //var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
-
-            //channel.BasicPublish("", "demo-queue", null, body);
 
         }
 

@@ -68,6 +68,8 @@ namespace MyMicroservice.Controllers
             }
             if (_context.Update(id,item))
             {
+                var payload = JsonSerializer.Serialize(item);
+                _rabbitMqClient.Publish("updating", "student.updated", payload);
                 return new NoContentResult();
             }
             else
@@ -80,6 +82,8 @@ namespace MyMicroservice.Controllers
         {
             if (_context.Delete(id))
             {
+                var payload = JsonSerializer.Serialize(id);
+                _rabbitMqClient.Publish("deleting", "student.deleted", payload);
                 return new NoContentResult();
             }
             else
