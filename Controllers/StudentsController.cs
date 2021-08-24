@@ -61,17 +61,21 @@ namespace MyMicroservice.Controllers
            
         }
         [HttpPut("{id}")]
-        public IActionResult Update(long id, [FromBody] Student item)
+        public ActionResult Update(long id, [FromBody] Student item)
         {
             if (item == null || item.Id != id)
             {
                 return BadRequest();
             }
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
             var newItem = _context.Update(id,item);
             
             var payload = JsonSerializer.Serialize(newItem);
             _rabbitMqClient.Publish("updating", "student.updated", payload);
-            return new NoContentResult();
+            return Ok(newItem);
         }
 
         // DELETE api/shoppingcart/5
