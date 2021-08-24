@@ -15,9 +15,9 @@ namespace MyMicroservice.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-        private readonly StudentContext _context;
+        private readonly IStudentService _context;
         private readonly IRabbitMQClient _rabbitMqClient;
-        public StudentsController(StudentContext context, IRabbitMQClient rabbitMQClient)
+        public StudentsController(IStudentService context, IRabbitMQClient rabbitMQClient)
         {
             _context = context;
             _rabbitMqClient = rabbitMQClient;
@@ -25,14 +25,15 @@ namespace MyMicroservice.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Student>> GetStudents()
         {
-            return _context.GetStudents();
+            var items= _context.GetStudents();
+            return Ok(items);
         }
 
         [HttpGet("{id}", Name = "GetById")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(Student), (int)HttpStatusCode.OK)]
         [ActionName(nameof(GetById))]
-        public IActionResult GetById(long id)
+        public ActionResult<Student> GetById(long id)
         {
             
             var item = _context.GetById(id);
@@ -40,23 +41,23 @@ namespace MyMicroservice.Controllers
             {
                 return NotFound();
             }
-            return new ObjectResult(item);
+            return Ok(item);
         }
         [HttpPost]
         [ProducesResponseType(typeof(Student), (int)HttpStatusCode.OK)]
-        public IActionResult Create([FromBody] Student item)
+        public ActionResult Create([FromBody] Student item)
         {
-            if (_context.Create(item))
+            if (!ModelState.IsValid)
             {
-                var payload = JsonSerializer.Serialize(item);
-                _rabbitMqClient.Publish("creating", "student.created", payload);
-                return CreatedAtRoute("GetById", new { id = item.Id }, item);
-                
+                return BadRequest(ModelState);
             }
-            else
-            {
-                return BadRequest();
-            }
+
+            var newItem = _context.Create(item);
+            var payload = JsonSerializer.Serialize(newItem);
+            _rabbitMqClient.Publish("creating", "student.created", payload);
+            return CreatedAtAction("GetById", new { id = newItem.Id }, newItem);
+  
+           
            
         }
         [HttpPut("{id}")]
@@ -66,30 +67,28 @@ namespace MyMicroservice.Controllers
             {
                 return BadRequest();
             }
-            if (_context.Update(id,item))
-            {
-                var payload = JsonSerializer.Serialize(item);
-                _rabbitMqClient.Publish("updating", "student.updated", payload);
-                return new NoContentResult();
-            }
-            else
-            {
-                return NotFound();
-            }
+            var newItem = _context.Update(id,item);
+            
+            var payload = JsonSerializer.Serialize(newItem);
+            _rabbitMqClient.Publish("updating", "student.updated", payload);
+            return new NoContentResult();
         }
+
+        // DELETE api/shoppingcart/5
         [HttpDelete("{id}")]
-        public IActionResult Delete(long id)
+        public ActionResult Delete(long id)
         {
-            if (_context.Delete(id))
-            {
-                var payload = JsonSerializer.Serialize(id);
-                _rabbitMqClient.Publish("deleting", "student.deleted", payload);
-                return new NoContentResult();
-            }
-            else
+            var existingItem = _context.GetById(id);
+            if (existingItem == null)
             {
                 return NotFound();
             }
+            _context.Delete(id);
+            var payload = JsonSerializer.Serialize(id);
+            _rabbitMqClient.Publish("deleting", "student.deleted", payload);
+            return Ok();
         }
+
+       
     }
 }

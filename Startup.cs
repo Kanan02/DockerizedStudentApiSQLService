@@ -39,7 +39,7 @@ namespace MyMicroservice
             var user = Configuration["DBUser"];
             var password = Configuration["DBPassword"];
             var database = Configuration["Database"];
-
+            services.AddScoped<IStudentService, StudentContext>();
             services.AddDbContext<StudentContext>(options =>
                 options.UseSqlServer($"Server={server},{port};Initial Catalog={database};User ID ={user};Password={password}",
                 sqlServerOptionsAction: sqlOptions =>
